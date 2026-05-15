@@ -353,13 +353,13 @@
 
     async function loadLeaderboard() {
       try {
-        // Essayer de charger depuis GitHub
-        const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${LEADERBOARD_FILE}`);
+        // Charger depuis GitHub (classement global)
+        const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${LEADERBOARD_FILE}?t=${Date.now()}`);
         if (response.ok) {
           const data = await response.json();
           leaderboard = normalizeLeaderboard(data);
         } else {
-          // Fallback vers localStorage si GitHub échoue
+          // Fallback vers localStorage
           const raw = localStorage.getItem(STORAGE_KEY);
           leaderboard = raw ? normalizeLeaderboard(JSON.parse(raw)) : [];
         }
@@ -372,7 +372,11 @@
     }
 
     function saveLeaderboard() {
+      // Sauvegarder localement (les scores seront ajoutés au localStorage)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(leaderboard));
+      // Note: Pour mettre à jour le classement global sur GitHub,
+      // il faut modifier manuellement le fichier leaderboard.json sur GitHub
+      console.log("Score sauvegardé localement. Pour mettre à jour le classement global, modifiez leaderboard.json sur GitHub.");
     }
 
     function updateLeaderboard() {
