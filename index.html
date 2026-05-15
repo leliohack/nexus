@@ -42,11 +42,14 @@
     .info span { display: inline-flex; align-items: center; gap: 8px; }
     #game {
       width: 100%;
+      height: auto;
+      aspect-ratio: 640 / 480;
       border-radius: 22px;
       border: 2px solid rgba(99, 200, 255, 0.22);
       background: #020b1d;
       box-shadow: inset 0 0 40px rgba(0, 126, 255, 0.14);
       display: block;
+      max-width: 100%;
     }
     #respawn {
       padding: 12px 22px;
@@ -67,6 +70,35 @@
       font-size: 14px;
       margin-top: 10px;
       text-align: right;
+    }
+    .mobile-controls {
+      margin-top: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .mobile-controls button {
+      min-width: 80px;
+      min-height: 50px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 18px;
+      background: rgba(88, 101, 242, 0.95);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 14px 30px rgba(88, 101, 242, 0.25);
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .mobile-controls button:active {
+      transform: translateY(1px);
+    }
+    .mobile-controls button.shoot {
+      background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
     }
     .leaderboard {
       margin-top: 20px;
@@ -181,6 +213,47 @@
     }
     .modal button:hover { transform: translateY(-1px); }
     .modal button:active { transform: translateY(1px); }
+
+    @media (max-width: 600px) {
+      .wrapper {
+        width: 100%;
+        max-width: 100vw;
+        padding: 16px;
+        border-radius: 0;
+      }
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .info {
+        font-size: 14px;
+        gap: 12px;
+      }
+      #respawn {
+        width: 100%;
+      }
+      .mobile-controls {
+        gap: 10px;
+      }
+      .mobile-controls button {
+        min-width: 70px;
+        min-height: 45px;
+        font-size: 14px;
+      }
+      .leaderboard {
+        padding: 14px;
+      }
+      .leaderboard h2 {
+        font-size: 16px;
+      }
+      .leaderboard ol {
+        font-size: 14px;
+      }
+      .discord-note {
+        font-size: 13px;
+        padding: 12px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -194,6 +267,11 @@
       <button id="respawn" class="hidden">Respawn</button>
     </div>
     <canvas id="game" width="640" height="480"></canvas>
+    <div class="mobile-controls">
+      <button id="btnLeft">← Gauche</button>
+      <button id="btnShoot" class="shoot">Tirer</button>
+      <button id="btnRight">Droite →</button>
+    </div>
     <div class="note">Recharge la page ou clique Respawn pour rejouer après Game Over.</div>
     <div class="leaderboard">
       <h2>Meilleurs scores</h2>
@@ -221,6 +299,16 @@
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
+
+    // Adapter la taille du canvas interne à la taille d'affichage
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
     const scoreEl = document.getElementById("score");
     const etatEl = document.getElementById("etat");
     const respawnBtn = document.getElementById("respawn");
@@ -229,6 +317,9 @@
     const nameModal = document.getElementById("nameModal");
     const playerNameInput = document.getElementById("playerNameInput");
     const startGameBtn = document.getElementById("startGame");
+    const btnLeft = document.getElementById("btnLeft");
+    const btnRight = document.getElementById("btnRight");
+    const btnShoot = document.getElementById("btnShoot");
 
     const STORAGE_KEY = "space_arcade_leaderboard";
     let playerName = "";
@@ -308,7 +399,14 @@
     }
 
     function resetGame() {
-      player = { x: canvas.width / 2 - 20, y: canvas.height - 60, w: 40, h: 16, speed: 6 };
+      const scale = canvas.width / 640;
+      player = {
+        x: canvas.width / 2 - 20 * scale,
+        y: canvas.height - 60 * scale,
+        w: 40 * scale,
+        h: 16 * scale,
+        speed: 6 * scale
+      };
       bullets = [];
       enemies = [];
       score = 0;
@@ -323,13 +421,14 @@
     }
 
     function createEnemy() {
-      const size = 28;
+      const scale = canvas.width / 640;
+      const size = 28 * scale;
       enemies.push({
         x: Math.random() * (canvas.width - size),
         y: -size,
         w: size,
         h: size,
-        speed: 2 + Math.random() * 1.8
+        speed: (2 + Math.random() * 1.8) * scale
       });
     }
 
@@ -339,8 +438,9 @@
     }
 
     function drawText(text, x, y, size = "18px") {
+      const scale = canvas.width / 640;
       ctx.fillStyle = "#9bf";
-      ctx.font = `${size} "Segoe UI", sans-serif`;
+      ctx.font = `${parseFloat(size) * scale}px "Segoe UI", sans-serif`;
       ctx.fillText(text, x, y);
     }
 
@@ -352,7 +452,14 @@
       player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
       if (keys.shoot && bullets.length < 6) {
-        bullets.push({ x: player.x + player.w / 2 - 3, y: player.y - 12, w: 6, h: 12, speed: 8 });
+        const scale = canvas.width / 640;
+        bullets.push({
+          x: player.x + player.w / 2 - 3 * scale,
+          y: player.y - 12 * scale,
+          w: 6 * scale,
+          h: 12 * scale,
+          speed: 8 * scale
+        });
         keys.shoot = false;
       }
 
@@ -411,7 +518,8 @@
       enemies.forEach((enemy) => drawRect(enemy, "#ff6b6b"));
 
       if (gameOver) {
-        drawText("GAME OVER", canvas.width / 2 - 110, canvas.height / 2 - 10, "42px");
+        const scale = canvas.width / 640;
+        drawText("GAME OVER", canvas.width / 2 - 110 * scale, canvas.height / 2 - 10 * scale, "42px");
       }
     }
 
@@ -454,6 +562,24 @@
     });
 
     startGameBtn.addEventListener("click", startWithName);
+
+    btnLeft.addEventListener("touchstart", (e) => { e.preventDefault(); keys.left = true; });
+    btnLeft.addEventListener("touchend", (e) => { e.preventDefault(); keys.left = false; });
+    btnLeft.addEventListener("mousedown", () => { keys.left = true; });
+    btnLeft.addEventListener("mouseup", () => { keys.left = false; });
+    btnLeft.addEventListener("mouseleave", () => { keys.left = false; });
+
+    btnRight.addEventListener("touchstart", (e) => { e.preventDefault(); keys.right = true; });
+    btnRight.addEventListener("touchend", (e) => { e.preventDefault(); keys.right = false; });
+    btnRight.addEventListener("mousedown", () => { keys.right = true; });
+    btnRight.addEventListener("mouseup", () => { keys.right = false; });
+    btnRight.addEventListener("mouseleave", () => { keys.right = false; });
+
+    btnShoot.addEventListener("touchstart", (e) => { e.preventDefault(); keys.shoot = true; });
+    btnShoot.addEventListener("touchend", (e) => { e.preventDefault(); keys.shoot = false; });
+    btnShoot.addEventListener("mousedown", () => { keys.shoot = true; });
+    btnShoot.addEventListener("mouseup", () => { keys.shoot = false; });
+    btnShoot.addEventListener("mouseleave", () => { keys.shoot = false; });
 
     respawnBtn.addEventListener("click", () => {
       respawnBtn.blur();
