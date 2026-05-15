@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at top, #2c3e50 0%, #090b13 90%);
+      color: #eef7ff;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .wrapper {
+      width: 720px;
+      max-width: 95vw;
+      padding: 24px;
+      border-radius: 28px;
+      background: rgba(18, 28, 45, 0.96);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .info {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 16px;
+      color: #c6d9ff;
+    }
+    .info span { display: inline-flex; align-items: center; gap: 8px; }
+    #game {
+      width: 100%;
+      border-radius: 22px;
+      border: 2px solid rgba(99, 200, 255, 0.22);
+      background: #020b1d;
+      box-shadow: inset 0 0 40px rgba(0, 126, 255, 0.14);
+      display: block;
+    }
+    #respawn {
+      padding: 12px 22px;
+      border: none;
+      border-radius: 999px;
+      font-size: 16px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+      color: #fff;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      box-shadow: 0 12px 30px rgba(14, 116, 255, 0.25);
+    }
+    #respawn:hover { transform: translateY(-1px); box-shadow: 0 18px 36px rgba(14, 116, 255, 0.32); }
+    #respawn:active { transform: translateY(1px); }
+    #respawn.hidden { opacity: 0; pointer-events: none; }
+    .note {
+      color: #a2baff;
+      font-size: 14px;
+      margin-top: 10px;
+      text-align: right;
+    }
+    .leaderboard {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(7, 15, 35, 0.9);
+      border: 1px solid rgba(115, 156, 255, 0.12);
+    }
+    .leaderboard h2 {
+      margin-bottom: 12px;
+      font-size: 18px;
+      color: #d7e8ff;
+    }
+    .leaderboard ol {
+      padding-left: 18px;
+      color: #c8d4ff;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .discord-note {
+      margin-top: 18px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: rgba(26, 40, 72, 0.95);
+      border: 1px solid rgba(72, 146, 255, 0.16);
+      color: #d7e8ff;
+      font-size: 15px;
+      line-height: 1.6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .discord-note span {
+      display: inline-block;
+      max-width: calc(100% - 64px);
+    }
+    .discord-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: 54px;
+      background: #5865f2;
+      color: #fff;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 14px 30px rgba(88, 101, 242, 0.25);
+      text-decoration: none;
+    }
+    .discord-link:hover {
+      transform: translateY(-1px);
+    }
+    .discord-link:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.35);
+      outline-offset: 4px;
+    }
+    .discord-logo {
+      width: 28px;
+      height: 28px;
+      fill: #fff;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 10;
+    }
+    .modal {
+      width: min(420px, calc(100vw - 40px));
+      padding: 28px;
+      border-radius: 24px;
+      background: rgba(12, 22, 40, 0.98);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(120, 170, 255, 0.16);
+      text-align: center;
+    }
+    .modal h1 {
+      margin-bottom: 18px;
+      font-size: 24px;
+      color: #eef7ff;
+    }
+    .modal p {
+      margin-bottom: 20px;
+      color: #b8c7ff;
+      line-height: 1.5;
+    }
+    .modal input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(20, 35, 60, 0.95);
+      color: #eef7ff;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+    .modal button {
+      width: 100%;
+      padding: 14px 0;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+      transition: transform .2s ease, box-shadow .2s ease;
+      box-shadow: 0 12px 24px rgba(14, 116, 255, 0.25);
+    }
+    .modal button:hover { transform: translateY(-1px); }
+    .modal button:active { transform: translateY(1px); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="topbar">
+      <div class="info">
+        <span id="playerName">Joueur: —</span>
+        <span id="score">Score: 0</span>
+        <span id="etat">Flèches ← → pour bouger, Espace pour tirer</span>
+      </div>
+      <button id="respawn" class="hidden">Respawn</button>
+    </div>
+    <canvas id="game" width="640" height="480"></canvas>
+    <div class="note">Recharge la page ou clique Respawn pour rejouer après Game Over.</div>
+    <div class="leaderboard">
+      <h2>Meilleurs scores</h2>
+      <ol id="leaderboardList"></ol>
+    </div>
+    <div class="discord-note">
+      <span>Fans de Brawl Stars ? Rejoignez notre Discord.</span>
+      <a class="discord-link" href="https://discord.gg/vxVUgATeWa" target="_blank" rel="noreferrer" aria-label="Discord">
+        <svg class="discord-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="nameModal">
+    <div class="modal">
+      <h1>Bienvenue</h1>
+      <p>Choisis ton pseudo pour enregistrer ton score dans le classement.</p>
+      <input id="playerNameInput" type="text" maxlength="16" placeholder="Ton pseudo ici" />
+      <button id="startGame">Démarrer</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const etatEl = document.getElementById("etat");
+    const respawnBtn = document.getElementById("respawn");
+    const playerNameEl = document.getElementById("playerName");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const nameModal = document.getElementById("nameModal");
+    const playerNameInput = document.getElementById("playerNameInput");
+    const startGameBtn = document.getElementById("startGame");
+
+    const STORAGE_KEY = "space_arcade_leaderboard";
+    let playerName = "";
+    let player;
+    let bullets;
+    let enemies;
+    let score;
+    let gameOver;
+    let keys;
+    let animationId;
+    let leaderboard = [];
+    let scoreSaved = false;
+
+    function normalizeLeaderboard(rawList) {
+      const bestScores = new Map();
+      rawList.forEach(entry => {
+        const name = (entry.name || "").trim();
+        const key = name.toLowerCase();
+        const scoreValue = Number(entry.score) || 0;
+        if (!key) return;
+        const current = bestScores.get(key);
+        if (!current || scoreValue > current.score) {
+          bestScores.set(key, { name, score: scoreValue });
+        }
+      });
+      return Array.from(bestScores.values());
+    }
+
+    function loadLeaderboard() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        leaderboard = raw ? normalizeLeaderboard(JSON.parse(raw)) : [];
+      } catch {
+        leaderboard = [];
+      }
+      updateLeaderboard();
+    }
+
+    function saveLeaderboard() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(leaderboard));
+    }
+
+    function updateLeaderboard() {
+      leaderboard.sort((a, b) => b.score - a.score);
+      leaderboard = leaderboard.slice(0, 5);
+      saveLeaderboard();
+      renderLeaderboard();
+    }
+
+    function renderLeaderboard() {
+      leaderboardList.innerHTML = leaderboard.length
+        ? leaderboard.map(entry => `<li>${entry.name} — ${entry.score}</li>`).join("")
+        : "<li>Aucun score enregistré</li>";
+    }
+
+    function addScoreToLeaderboard() {
+      if (score > 0 && playerName) {
+        const existing = leaderboard.find(
+          entry => entry.name.toLowerCase() === playerName.toLowerCase()
+        );
+
+        if (existing) {
+          if (score > existing.score) {
+            existing.score = score;
+            updateLeaderboard();
+          }
+        } else {
+          leaderboard.push({ name: playerName, score });
+          updateLeaderboard();
+        }
+      }
+    }
+
+    function setPlayerName(name) {
+      playerName = name.trim().slice(0, 16) || "Joueur";
+      playerNameEl.textContent = "Joueur: " + playerName;
+    }
+
+    function resetGame() {
+      player = { x: canvas.width / 2 - 20, y: canvas.height - 60, w: 40, h: 16, speed: 6 };
+      bullets = [];
+      enemies = [];
+      score = 0;
+      gameOver = false;
+      scoreSaved = false;
+      keys = { left: false, right: false, shoot: false };
+      etatEl.textContent = "Flèches ← → pour bouger, Espace pour tirer";
+      respawnBtn.classList.add("hidden");
+      scoreEl.textContent = "Score: 0";
+      cancelAnimationFrame(animationId);
+      loop();
+    }
+
+    function createEnemy() {
+      const size = 28;
+      enemies.push({
+        x: Math.random() * (canvas.width - size),
+        y: -size,
+        w: size,
+        h: size,
+        speed: 2 + Math.random() * 1.8
+      });
+    }
+
+    function drawRect(obj, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    }
+
+    function drawText(text, x, y, size = "18px") {
+      ctx.fillStyle = "#9bf";
+      ctx.font = `${size} "Segoe UI", sans-serif`;
+      ctx.fillText(text, x, y);
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      if (keys.left) player.x -= player.speed;
+      if (keys.right) player.x += player.speed;
+      player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+
+      if (keys.shoot && bullets.length < 6) {
+        bullets.push({ x: player.x + player.w / 2 - 3, y: player.y - 12, w: 6, h: 12, speed: 8 });
+        keys.shoot = false;
+      }
+
+      bullets.forEach((bullet, index) => {
+        bullet.y -= bullet.speed;
+        if (bullet.y + bullet.h < 0) bullets.splice(index, 1);
+      });
+
+      enemies.forEach((enemy, eIndex) => {
+        enemy.y += enemy.speed;
+        if (enemy.y > canvas.height) {
+          enemies.splice(eIndex, 1);
+          score = Math.max(0, score - 5);
+        }
+
+        bullets.forEach((bullet, bIndex) => {
+          if (
+            bullet.x < enemy.x + enemy.w &&
+            bullet.x + bullet.w > enemy.x &&
+            bullet.y < enemy.y + enemy.h &&
+            bullet.y + bullet.h > enemy.y
+          ) {
+            enemies.splice(eIndex, 1);
+            bullets.splice(bIndex, 1);
+            score += 10;
+          }
+        });
+
+        if (
+          player.x < enemy.x + enemy.w &&
+          player.x + player.w > enemy.x &&
+          player.y < enemy.y + enemy.h &&
+          player.y + player.h > enemy.y
+        ) {
+          gameOver = true;
+          if (!scoreSaved) {
+            addScoreToLeaderboard();
+            scoreSaved = true;
+          }
+          etatEl.textContent = "Game Over ! Clique sur Respawn pour recommencer.";
+          respawnBtn.classList.remove("hidden");
+        }
+      });
+
+      if (Math.random() < 0.02) createEnemy();
+      scoreEl.textContent = "Score: " + score;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(5, 13, 32, 0.95)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawRect(player, "#55c2ff");
+      bullets.forEach((bullet) => drawRect(bullet, "#fff67a"));
+      enemies.forEach((enemy) => drawRect(enemy, "#ff6b6b"));
+
+      if (gameOver) {
+        drawText("GAME OVER", canvas.width / 2 - 110, canvas.height / 2 - 10, "42px");
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      if (!gameOver) animationId = requestAnimationFrame(loop);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT") return;
+
+      if (e.key === "ArrowLeft") keys.left = true;
+      if (e.key === "ArrowRight") keys.right = true;
+      if (e.key === " " || e.key === "Spacebar") {
+        e.preventDefault();
+        keys.shoot = true;
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "ArrowLeft") keys.left = false;
+      if (e.key === "ArrowRight") keys.right = false;
+    });
+
+    function startWithName() {
+      const name = playerNameInput.value.trim();
+      if (!name) return playerNameInput.focus();
+      setPlayerName(name);
+      nameModal.style.display = "none";
+      startGameBtn.blur();
+      resetGame();
+    }
+
+    playerNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        startWithName();
+      }
+    });
+
+    startGameBtn.addEventListener("click", startWithName);
+
+    respawnBtn.addEventListener("click", () => {
+      respawnBtn.blur();
+      resetGame();
+    });
+
+    loadLeaderboard();
+    renderLeaderboard();
+  </script>
+</body>
+</html>
