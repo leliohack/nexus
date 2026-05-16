@@ -100,24 +100,6 @@
     .mobile-controls button.shoot {
       background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
     }
-    .leaderboard {
-      margin-top: 20px;
-      padding: 18px;
-      border-radius: 18px;
-      background: rgba(7, 15, 35, 0.9);
-      border: 1px solid rgba(115, 156, 255, 0.12);
-    }
-    .leaderboard h2 {
-      margin-bottom: 12px;
-      font-size: 18px;
-      color: #d7e8ff;
-    }
-    .leaderboard ol {
-      padding-left: 18px;
-      color: #c8d4ff;
-      font-size: 15px;
-      line-height: 1.7;
-    }
     .discord-note {
       margin-top: 18px;
       padding: 14px 18px;
@@ -260,7 +242,6 @@
   <div class="wrapper">
     <div class="topbar">
       <div class="info">
-        <span id="playerName">Joueur: —</span>
         <span id="score">Score: 0</span>
         <span id="etat">Flèches ← → pour bouger, Espace pour tirer</span>
       </div>
@@ -273,10 +254,6 @@
       <button id="btnRight">Droite →</button>
     </div>
     <div class="note">Recharge la page ou clique Respawn pour rejouer après Game Over.</div>
-    <div class="leaderboard">
-      <h2>Meilleurs scores</h2>
-      <ol id="leaderboardList"></ol>
-    </div>
     <div class="discord-note">
       <span>Fans de Brawl Stars ? Rejoignez notre Discord.</span>
       <a class="discord-link" href="https://discord.gg/vxVUgATeWa" target="_blank" rel="noreferrer" aria-label="Discord">
@@ -284,15 +261,6 @@
           <path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/>
         </svg>
       </a>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="nameModal">
-    <div class="modal">
-      <h1>Bienvenue</h1>
-      <p>Choisis ton pseudo pour enregistrer ton score dans le classement.</p>
-      <input id="playerNameInput" type="text" maxlength="16" placeholder="Ton pseudo ici" />
-      <button id="startGame">Démarrer</button>
     </div>
   </div>
 
@@ -312,145 +280,18 @@
     const scoreEl = document.getElementById("score");
     const etatEl = document.getElementById("etat");
     const respawnBtn = document.getElementById("respawn");
-    const playerNameEl = document.getElementById("playerName");
-    const leaderboardList = document.getElementById("leaderboardList");
-    const nameModal = document.getElementById("nameModal");
-    const playerNameInput = document.getElementById("playerNameInput");
-    const startGameBtn = document.getElementById("startGame");
     const btnLeft = document.getElementById("btnLeft");
     const btnRight = document.getElementById("btnRight");
     const btnShoot = document.getElementById("btnShoot");
 
-    const STORAGE_KEY = "space_arcade_leaderboard";
-    const GITHUB_OWNER = "leliohack";
-    const GITHUB_REPO = "nexus";
-    const LEADERBOARD_FILE = "leaderboard.json";
-    let playerName = "";
     let player;
     let bullets;
     let enemies;
+    let particles;
     let score;
     let gameOver;
     let keys;
     let animationId;
-    let leaderboard = [];
-    let scoreSaved = false;
-    let fileSha = "";
-
-    function normalizeLeaderboard(rawList) {
-      const bestScores = new Map();
-      rawList.forEach(entry => {
-        const name = (entry.name || "").trim();
-        const key = name.toLowerCase();
-        const scoreValue = Number(entry.score) || 0;
-        if (!key) return;
-        const current = bestScores.get(key);
-        if (!current || scoreValue > current.score) {
-          bestScores.set(key, { name, score: scoreValue });
-        }
-      });
-      return Array.from(bestScores.values());
-    }
-
-    async function loadLeaderboard() {
-      try {
-        const token = localStorage.getItem('github_token') || new URLSearchParams(window.location.search).get('token');
-        const headers = {
-          'Accept': 'application/vnd.github.v3+json'
-        };
-        if (token) {
-          headers['Authorization'] = `token ${token}`;
-        }
-
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${LEADERBOARD_FILE}`, {
-          headers: headers
-        });
-        if (response.ok) {
-          const data = await response.json();
-          fileSha = data.sha;
-          const content = atob(data.content);
-          leaderboard = normalizeLeaderboard(JSON.parse(content));
-        } else {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          leaderboard = raw ? normalizeLeaderboard(JSON.parse(raw)) : [];
-        }
-      } catch {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        leaderboard = raw ? normalizeLeaderboard(JSON.parse(raw)) : [];
-      }
-      updateLeaderboard();
-    }
-
-    async function saveLeaderboard() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(leaderboard));
-
-      const token = localStorage.getItem('github_token') || new URLSearchParams(window.location.search).get('token');
-      if (!token) {
-        console.log('Pas de token GitHub, sauvegarde locale uniquement');
-        return;
-      }
-
-      try {
-        const content = btoa(JSON.stringify(leaderboard));
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${LEADERBOARD_FILE}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `token ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/vnd.github.v3+json'
-          },
-          body: JSON.stringify({
-            message: 'Mise à jour du classement',
-            content: content,
-            sha: fileSha
-          })
-        });
-        if (response.ok) {
-          const data = await response.json();
-          fileSha = data.sha;
-        } else {
-          console.error('Erreur sauvegarde GitHub:', response.statusText);
-        }
-      } catch (error) {
-        console.error('Erreur sauvegarde GitHub:', error);
-      }
-    }
-
-    function updateLeaderboard() {
-      leaderboard.sort((a, b) => b.score - a.score);
-      leaderboard = leaderboard.slice(0, 5);
-      saveLeaderboard();
-      renderLeaderboard();
-    }
-
-    function renderLeaderboard() {
-      leaderboardList.innerHTML = leaderboard.length
-        ? leaderboard.map(entry => `<li>${entry.name} — ${entry.score}</li>`).join("")
-        : "<li>Aucun score enregistré</li>";
-    }
-
-    function addScoreToLeaderboard() {
-      if (score > 0 && playerName) {
-        const existing = leaderboard.find(
-          entry => entry.name.toLowerCase() === playerName.toLowerCase()
-        );
-
-        if (existing) {
-          if (score > existing.score) {
-            existing.score = score;
-            updateLeaderboard();
-          }
-        } else {
-          leaderboard.push({ name: playerName, score });
-          updateLeaderboard();
-        }
-      }
-    }
-
-    function setPlayerName(name) {
-      playerName = name.trim().slice(0, 16) || "Joueur";
-      playerNameEl.textContent = "Joueur: " + playerName;
-    }
 
     function resetGame() {
       const scale = canvas.width / 640;
@@ -463,9 +304,9 @@
       };
       bullets = [];
       enemies = [];
+      particles = [];
       score = 0;
       gameOver = false;
-      scoreSaved = false;
       keys = { left: false, right: false, shoot: false };
       etatEl.textContent = "Flèches ← → pour bouger, Espace pour tirer";
       respawnBtn.classList.add("hidden");
@@ -482,20 +323,64 @@
         y: -size,
         w: size,
         h: size,
-        speed: (2 + Math.random() * 1.8) * scale
+        speed: (2 + Math.random() * 1.8) * scale,
+        color: `hsl(${Math.random() * 60 + 340}, 80%, 60%)`
       });
     }
 
-    function drawRect(obj, color) {
-      ctx.fillStyle = color;
-      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    function createParticle(x, y, color) {
+      const scale = canvas.width / 640;
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 8 * scale,
+          vy: (Math.random() - 0.5) * 8 * scale,
+          life: 1,
+          color: color,
+          size: Math.random() * 4 * scale + 2 * scale
+        });
+      }
     }
 
-    function drawText(text, x, y, size = "18px") {
+    function drawRect(obj, color, glow = false) {
+      if (glow) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = color;
+      }
+      ctx.fillStyle = color;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.shadowBlur = 0;
+    }
+
+    function drawText(text, x, y, size = "18px", glow = false) {
       const scale = canvas.width / 640;
+      if (glow) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#00ffff";
+      }
       ctx.fillStyle = "#9bf";
       ctx.font = `${parseFloat(size) * scale}px "Segoe UI", sans-serif`;
       ctx.fillText(text, x, y);
+      ctx.shadowBlur = 0;
+    }
+
+    function drawParticles() {
+      particles.forEach((p, index) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.02;
+        if (p.life <= 0) {
+          particles.splice(index, 1);
+        } else {
+          ctx.globalAlpha = p.life;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      });
     }
 
     function update() {
@@ -536,6 +421,7 @@
             bullet.y < enemy.y + enemy.h &&
             bullet.y + bullet.h > enemy.y
           ) {
+            createParticle(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, enemy.color || "#ff6b6b");
             enemies.splice(eIndex, 1);
             bullets.splice(bIndex, 1);
             score += 10;
@@ -548,11 +434,8 @@
           player.y < enemy.y + enemy.h &&
           player.y + player.h > enemy.y
         ) {
+          createParticle(player.x + player.w / 2, player.y + player.h / 2, "#00d4ff");
           gameOver = true;
-          if (!scoreSaved) {
-            addScoreToLeaderboard();
-            scoreSaved = true;
-          }
           etatEl.textContent = "Game Over ! Clique sur Respawn pour recommencer.";
           respawnBtn.classList.remove("hidden");
         }
@@ -564,16 +447,32 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(5, 13, 32, 0.95)";
+
+      // Background avec gradient
+      const gradient = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0,
+        canvas.width / 2, canvas.height / 2, canvas.width
+      );
+      gradient.addColorStop(0, "rgba(20, 40, 80, 0.95)");
+      gradient.addColorStop(1, "rgba(5, 13, 32, 0.98)");
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      drawRect(player, "#55c2ff");
-      bullets.forEach((bullet) => drawRect(bullet, "#fff67a"));
-      enemies.forEach((enemy) => drawRect(enemy, "#ff6b6b"));
+      // Dessiner les particules
+      drawParticles();
+
+      // Dessiner le joueur avec glow
+      drawRect(player, "#00d4ff", true);
+
+      // Dessiner les balles avec glow
+      bullets.forEach((bullet) => drawRect(bullet, "#ffd700", true));
+
+      // Dessiner les ennemis avec leurs couleurs et glow
+      enemies.forEach((enemy) => drawRect(enemy, enemy.color || "#ff6b6b", true));
 
       if (gameOver) {
         const scale = canvas.width / 640;
-        drawText("GAME OVER", canvas.width / 2 - 110 * scale, canvas.height / 2 - 10 * scale, "42px");
+        drawText("GAME OVER", canvas.width / 2 - 110 * scale, canvas.height / 2 - 10 * scale, "42px", true);
       }
     }
 
@@ -599,24 +498,6 @@
       if (e.key === "ArrowRight") keys.right = false;
     });
 
-    function startWithName() {
-      const name = playerNameInput.value.trim();
-      if (!name) return playerNameInput.focus();
-      setPlayerName(name);
-      nameModal.style.display = "none";
-      startGameBtn.blur();
-      resetGame();
-    }
-
-    playerNameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        startWithName();
-      }
-    });
-
-    startGameBtn.addEventListener("click", startWithName);
-
     btnLeft.addEventListener("touchstart", (e) => { e.preventDefault(); keys.left = true; });
     btnLeft.addEventListener("touchend", (e) => { e.preventDefault(); keys.left = false; });
     btnLeft.addEventListener("mousedown", () => { keys.left = true; });
@@ -640,8 +521,7 @@
       resetGame();
     });
 
-    loadLeaderboard();
-    renderLeaderboard();
+    resetGame();
   </script>
 </body>
 </html>
