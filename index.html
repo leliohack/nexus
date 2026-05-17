@@ -540,18 +540,6 @@
       if (e.key === "ArrowRight") keys.right = false;
     });
 
-    btnLeft.addEventListener("touchstart", (e) => { e.preventDefault(); keys.left = true; });
-    btnLeft.addEventListener("touchend", (e) => { e.preventDefault(); keys.left = false; });
-    btnLeft.addEventListener("mousedown", () => { keys.left = true; });
-    btnLeft.addEventListener("mouseup", () => { keys.left = false; });
-    btnLeft.addEventListener("mouseleave", () => { keys.left = false; });
-
-    btnRight.addEventListener("touchstart", (e) => { e.preventDefault(); keys.right = true; });
-    btnRight.addEventListener("touchend", (e) => { e.preventDefault(); keys.right = false; });
-    btnRight.addEventListener("mousedown", () => { keys.right = true; });
-    btnRight.addEventListener("mouseup", () => { keys.right = false; });
-    btnRight.addEventListener("mouseleave", () => { keys.right = false; });
-
     btnShoot.addEventListener("touchstart", (e) => { e.preventDefault(); keys.shoot = true; });
     btnShoot.addEventListener("touchend", (e) => { e.preventDefault(); keys.shoot = false; });
     btnShoot.addEventListener("mousedown", () => { keys.shoot = true; });
