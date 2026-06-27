@@ -39,6 +39,16 @@
       font-size: 16px;
       color: #c6d9ff;
     }
+    #score {
+      font-size: 24px;
+      font-weight: bold;
+      color: #00ffff;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.5);
+      padding: 8px 16px;
+      background: rgba(0, 100, 150, 0.3);
+      border-radius: 12px;
+      border: 2px solid rgba(0, 255, 255, 0.4);
+    }
     .info span { display: inline-flex; align-items: center; gap: 8px; }
     #game {
       width: 100%;
@@ -281,6 +291,9 @@
       </div>
       <button id="respawn" class="hidden">Respawn</button>
     </div>
+    <audio id="bgMusic" loop>
+      <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+    </audio>
     <canvas id="game" width="640" height="480"></canvas>
     <div class="mobile-controls">
       <div class="joystick-container" id="joystickContainer">
@@ -321,6 +334,7 @@
     const joystickBase = document.getElementById("joystickBase");
     const joystickStick = document.getElementById("joystickStick");
     const btnShoot = document.getElementById("btnShoot");
+    const bgMusic = document.getElementById("bgMusic");
 
     let player;
     let bullets;
@@ -335,6 +349,15 @@
     let joystickActive = false;
     let joystickCenterX = 0;
     let joystickCenterY = 0;
+    let musicStarted = false;
+
+    function startMusic() {
+      if (!musicStarted) {
+        bgMusic.volume = 0.3;
+        bgMusic.play().catch(e => console.log("Audio play failed:", e));
+        musicStarted = true;
+      }
+    }
 
     function resetGame() {
       const scale = canvas.width / 640;
@@ -776,6 +799,7 @@
 
     window.addEventListener("keydown", (e) => {
       if (e.target.tagName === "INPUT") return;
+      startMusic();
 
       if (e.key === "ArrowLeft") keys.left = true;
       if (e.key === "ArrowRight") keys.right = true;
@@ -790,9 +814,9 @@
       if (e.key === "ArrowRight") keys.right = false;
     });
 
-    btnShoot.addEventListener("touchstart", (e) => { e.preventDefault(); keys.shoot = true; });
+    btnShoot.addEventListener("touchstart", (e) => { e.preventDefault(); startMusic(); keys.shoot = true; });
     btnShoot.addEventListener("touchend", (e) => { e.preventDefault(); keys.shoot = false; });
-    btnShoot.addEventListener("mousedown", () => { keys.shoot = true; });
+    btnShoot.addEventListener("mousedown", () => { startMusic(); keys.shoot = true; });
     btnShoot.addEventListener("mouseup", () => { keys.shoot = false; });
     btnShoot.addEventListener("mouseleave", () => { keys.shoot = false; });
 
@@ -804,6 +828,7 @@
     // Gestion du joystick tactile
     joystickBase.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      startMusic();
       joystickActive = true;
       const rect = joystickBase.getBoundingClientRect();
       joystickCenterX = rect.left + rect.width / 2;
