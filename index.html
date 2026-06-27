@@ -326,6 +326,7 @@
     let bullets;
     let enemies;
     let particles;
+    let stars;
     let score;
     let gameOver;
     let keys;
@@ -342,11 +343,23 @@
         y: canvas.height - 60 * scale,
         w: 40 * scale,
         h: 16 * scale,
-        speed: 6 * scale
+        speed: 6 * scale,
+        vx: 0,
+        ax: 0
       };
       bullets = [];
       enemies = [];
       particles = [];
+      stars = [];
+      for (let i = 0; i < 100; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 2 + 0.5,
+          speed: Math.random() * 0.5 + 0.2,
+          brightness: Math.random()
+        });
+      }
       score = 0;
       gameOver = false;
       keys = { left: false, right: false, shoot: false };
@@ -372,15 +385,18 @@
 
     function createParticle(x, y, color) {
       const scale = canvas.width / 640;
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 12; i++) {
+        const angle = (Math.PI * 2 / 12) * i;
+        const speed = Math.random() * 6 * scale + 2 * scale;
         particles.push({
           x: x,
           y: y,
-          vx: (Math.random() - 0.5) * 8 * scale,
-          vy: (Math.random() - 0.5) * 8 * scale,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
           life: 1,
           color: color,
-          size: Math.random() * 4 * scale + 2 * scale
+          size: Math.random() * 4 * scale + 2 * scale,
+          gravity: 0.15 * scale
         });
       }
     }
@@ -393,6 +409,214 @@
       ctx.fillStyle = color;
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
       ctx.shadowBlur = 0;
+    }
+
+    function drawSpaceship(x, y, w, h, color, glow = false) {
+      const scale = canvas.width / 640;
+      const time = Date.now() / 100;
+      
+      if (glow) {
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = color;
+      }
+      
+      // Ailes principales
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2, y);
+      ctx.lineTo(x + w * 1.3, y + h * 1.2);
+      ctx.lineTo(x + w * 0.9, y + h * 0.8);
+      ctx.lineTo(x + w / 2, y + h * 0.5);
+      ctx.lineTo(x + w * 0.1, y + h * 0.8);
+      ctx.lineTo(x - w * 0.3, y + h * 1.2);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Corps principal du vaisseau
+      ctx.fillStyle = '#0088cc';
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2, y);
+      ctx.lineTo(x + w * 0.7, y + h * 0.6);
+      ctx.lineTo(x + w * 0.6, y + h);
+      ctx.lineTo(x + w * 0.4, y + h);
+      ctx.lineTo(x + w * 0.3, y + h * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Détails de coque
+      ctx.strokeStyle = '#00aaff';
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2, y);
+      ctx.lineTo(x + w / 2, y + h * 0.6);
+      ctx.stroke();
+      
+      // Cockpit
+      ctx.fillStyle = '#00ffff';
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00ffff';
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2, y + h * 0.35, w * 0.12, h * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Reflet sur le cockpit
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2 - w * 0.03, y + h * 0.32, w * 0.04, h * 0.06, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Réacteurs avec flammes animées
+      const flameLength = (Math.sin(time) + 1.5) * h * 0.4;
+      
+      // Réacteur gauche
+      ctx.fillStyle = '#ff6600';
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#ff6600';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.15, y + h * 0.9);
+      ctx.lineTo(x + w * 0.25, y + h * 0.9);
+      ctx.lineTo(x + w * 0.2, y + h * 0.9 + flameLength);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Cœur de la flamme gauche
+      ctx.fillStyle = '#ffff00';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.17, y + h * 0.9);
+      ctx.lineTo(x + w * 0.23, y + h * 0.9);
+      ctx.lineTo(x + w * 0.2, y + h * 0.9 + flameLength * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Réacteur droit
+      ctx.fillStyle = '#ff6600';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.75, y + h * 0.9);
+      ctx.lineTo(x + w * 0.85, y + h * 0.9);
+      ctx.lineTo(x + w * 0.8, y + h * 0.9 + flameLength);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Cœur de la flamme droite
+      ctx.fillStyle = '#ffff00';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.77, y + h * 0.9);
+      ctx.lineTo(x + w * 0.83, y + h * 0.9);
+      ctx.lineTo(x + w * 0.8, y + h * 0.9 + flameLength * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Réacteur central
+      ctx.fillStyle = '#ff4400';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.45, y + h);
+      ctx.lineTo(x + w * 0.55, y + h);
+      ctx.lineTo(x + w * 0.5, y + h + flameLength * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Détails des ailes
+      ctx.fillStyle = '#0066aa';
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.9, y + h * 0.8);
+      ctx.lineTo(x + w * 1.1, y + h * 1.1);
+      ctx.lineTo(x + w * 0.95, y + h * 0.95);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.1, y + h * 0.8);
+      ctx.lineTo(x - w * 0.1, y + h * 1.1);
+      ctx.lineTo(x + w * 0.05, y + h * 0.95);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Lumières de position
+      ctx.fillStyle = '#00ff00';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00ff00';
+      ctx.beginPath();
+      ctx.arc(x - w * 0.25, y + h * 1.1, w * 0.03, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ff0000';
+      ctx.shadowColor = '#ff0000';
+      ctx.beginPath();
+      ctx.arc(x + w * 1.25, y + h * 1.1, w * 0.03, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.shadowBlur = 0;
+    }
+
+    function drawEnemy(x, y, w, h, color, glow = false) {
+      const scale = canvas.width / 640;
+      const time = Date.now() / 200;
+      const blink = Math.sin(time) > 0.95; // Clignement aléatoire
+      
+      if (glow) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = color;
+      }
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      // Forme d'ennemi alien
+      ctx.moveTo(x + w / 2, y);
+      ctx.lineTo(x + w, y + h * 0.3);
+      ctx.lineTo(x + w * 0.85, y + h);
+      ctx.lineTo(x + w * 0.15, y + h);
+      ctx.lineTo(x, y + h * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Yeux
+      if (blink) {
+        // Yeux fermés (lignes)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2 * scale;
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.25, y + h * 0.4);
+        ctx.lineTo(x + w * 0.45, y + h * 0.4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.55, y + h * 0.4);
+        ctx.lineTo(x + w * 0.75, y + h * 0.4);
+        ctx.stroke();
+      } else {
+        // Yeux ouverts
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x + w * 0.35, y + h * 0.4, w * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + w * 0.65, y + h * 0.4, w * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        // Pupilles
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(x + w * 0.35, y + h * 0.4, w * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + w * 0.65, y + h * 0.4, w * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    function drawStars() {
+      stars.forEach(star => {
+        star.y += star.speed;
+        if (star.y > canvas.height) {
+          star.y = 0;
+          star.x = Math.random() * canvas.width;
+        }
+        star.brightness += (Math.random() - 0.5) * 0.1;
+        star.brightness = Math.max(0.3, Math.min(1, star.brightness));
+        ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
     }
 
     function drawText(text, x, y, size = "18px", glow = false) {
@@ -411,14 +635,15 @@
       particles.forEach((p, index) => {
         p.x += p.vx;
         p.y += p.vy;
-        p.life -= 0.02;
+        p.vy += p.gravity || 0;
+        p.life -= 0.015;
         if (p.life <= 0) {
           particles.splice(index, 1);
         } else {
           ctx.globalAlpha = p.life;
           ctx.fillStyle = p.color;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
           ctx.fill();
           ctx.globalAlpha = 1;
         }
@@ -428,8 +653,15 @@
     function update() {
       if (gameOver) return;
 
-      if (keys.left) player.x -= player.speed;
-      if (keys.right) player.x += player.speed;
+      const scale = canvas.width / 640;
+      // Physique améliorée avec accélération
+      if (keys.left) player.ax = -0.5 * scale;
+      else if (keys.right) player.ax = 0.5 * scale;
+      else player.ax = 0;
+      
+      player.vx += player.ax;
+      player.vx *= 0.92; // Friction
+      player.x += player.vx;
       player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
       if (keys.shoot && bullets.length < 6) {
@@ -439,12 +671,15 @@
           y: player.y - 12 * scale,
           w: 6 * scale,
           h: 12 * scale,
-          speed: 8 * scale
+          speed: 8 * scale,
+          trail: []
         });
         keys.shoot = false;
       }
 
       bullets.forEach((bullet, index) => {
+        bullet.trail.push({ x: bullet.x, y: bullet.y });
+        if (bullet.trail.length > 8) bullet.trail.shift();
         bullet.y -= bullet.speed;
         if (bullet.y + bullet.h < 0) bullets.splice(index, 1);
       });
@@ -500,17 +735,32 @@
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Dessiner les étoiles
+      drawStars();
+
       // Dessiner les particules
       drawParticles();
 
-      // Dessiner le joueur avec glow
-      drawRect(player, "#00d4ff", true);
+      // Dessiner le vaisseau avec forme détaillée
+      drawSpaceship(player.x, player.y, player.w, player.h, "#00d4ff", true);
 
-      // Dessiner les balles avec glow
-      bullets.forEach((bullet) => drawRect(bullet, "#ffd700", true));
+      // Dessiner les balles avec traînées
+      bullets.forEach((bullet) => {
+        // Traînée
+        bullet.trail.forEach((pos, i) => {
+          const alpha = i / bullet.trail.length * 0.5;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = "#ffd700";
+          ctx.beginPath();
+          ctx.arc(pos.x + bullet.w / 2, pos.y + bullet.h / 2, bullet.w / 2 * (i / bullet.trail.length), 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+        drawRect(bullet, "#ffd700", true);
+      });
 
-      // Dessiner les ennemis avec leurs couleurs et glow
-      enemies.forEach((enemy) => drawRect(enemy, enemy.color || "#ff6b6b", true));
+      // Dessiner les ennemis avec formes détaillées
+      enemies.forEach((enemy) => drawEnemy(enemy.x, enemy.y, enemy.w, enemy.h, enemy.color || "#ff6b6b", true));
 
       if (gameOver) {
         const scale = canvas.width / 640;
