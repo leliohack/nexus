@@ -379,7 +379,11 @@
     let bullets;
     let enemies;
     let particles;
+    let rings;
     let stars;
+    let nebulae;
+    let shakeTime = 0;
+    let shakeMag = 0;
     let score;
     let gameOver;
     let keys;
@@ -412,16 +416,43 @@
       bullets = [];
       enemies = [];
       particles = [];
+      rings = [];
       stars = [];
-      for (let i = 0; i < 100; i++) {
+      // Deux couches d'étoiles pour un effet de profondeur (parallax)
+      for (let i = 0; i < 70; i++) {
         stars.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          size: Math.random() * 2 + 0.5,
-          speed: Math.random() * 0.5 + 0.2,
-          brightness: Math.random()
+          size: Math.random() * 1.2 + 0.4,
+          speed: Math.random() * 0.3 + 0.1,
+          brightness: Math.random(),
+          hue: Math.random() < 0.25 ? "180, 220, 255" : "255, 255, 255"
         });
       }
+      for (let i = 0; i < 55; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 2 + 1.2,
+          speed: Math.random() * 0.8 + 0.5,
+          brightness: Math.random(),
+          hue: Math.random() < 0.3 ? "160, 200, 255" : "255, 255, 255"
+        });
+      }
+      nebulae = [];
+      const nebulaColors = ["88, 60, 200", "20, 120, 200", "180, 40, 160"];
+      for (let i = 0; i < 3; i++) {
+        nebulae.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: canvas.width * (0.35 + Math.random() * 0.25),
+          color: nebulaColors[i % nebulaColors.length],
+          driftX: (Math.random() - 0.5) * 0.06,
+          driftY: (Math.random() - 0.5) * 0.06
+        });
+      }
+      shakeTime = 0;
+      shakeMag = 0;
       score = 0;
       gameOver = false;
       keys = { left: false, right: false, shoot: false };
@@ -447,9 +478,10 @@
 
     function createParticle(x, y, color) {
       const scale = canvas.width / 640;
-      for (let i = 0; i < 12; i++) {
-        const angle = (Math.PI * 2 / 12) * i;
-        const speed = Math.random() * 6 * scale + 2 * scale;
+      const count = 16;
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.3;
+        const speed = Math.random() * 7 * scale + 1.5 * scale;
         particles.push({
           x: x,
           y: y,
@@ -457,10 +489,38 @@
           vy: Math.sin(angle) * speed,
           life: 1,
           color: color,
-          size: Math.random() * 4 * scale + 2 * scale,
-          gravity: 0.15 * scale
+          size: Math.random() * 4 * scale + 1.5 * scale,
+          gravity: 0.1 * scale
         });
       }
+      // Quelques étincelles blanches plus rapides pour le contraste
+      for (let i = 0; i < 6; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 9 * scale + 4 * scale;
+        particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.8,
+          color: "#ffffff",
+          size: Math.random() * 1.8 * scale + 0.8 * scale,
+          gravity: 0.05 * scale
+        });
+      }
+      createRing(x, y, color);
+    }
+
+    function createRing(x, y, color) {
+      const scale = canvas.width / 640;
+      rings.push({
+        x: x,
+        y: y,
+        radius: 2 * scale,
+        maxRadius: 34 * scale,
+        life: 1,
+        color: color
+      });
     }
 
     function drawRect(obj, color, glow = false) {
@@ -473,17 +533,26 @@
       ctx.shadowBlur = 0;
     }
 
-    function drawSpaceship(x, y, w, h, color, glow = false) {
+    function drawSpaceship(x, y, w, h, color, glow = false, tilt = 0) {
       const scale = canvas.width / 640;
       const time = Date.now() / 100;
-      
+
+      ctx.save();
+      ctx.translate(x + w / 2, y + h / 2);
+      ctx.rotate(tilt);
+      ctx.translate(-(x + w / 2), -(y + h / 2));
+
       if (glow) {
         ctx.shadowBlur = 25;
         ctx.shadowColor = color;
       }
       
       // Ailes principales
-      ctx.fillStyle = color;
+      const wingGrad = ctx.createLinearGradient(x, y, x, y + h * 1.2);
+      wingGrad.addColorStop(0, "#e8fbff");
+      wingGrad.addColorStop(0.4, color);
+      wingGrad.addColorStop(1, "#003a55");
+      ctx.fillStyle = wingGrad;
       ctx.beginPath();
       ctx.moveTo(x + w / 2, y);
       ctx.lineTo(x + w * 1.3, y + h * 1.2);
@@ -609,6 +678,7 @@
       ctx.fill();
       
       ctx.shadowBlur = 0;
+      ctx.restore();
     }
 
     function drawEnemy(x, y, w, h, color, glow = false) {
@@ -616,11 +686,16 @@
       const time = Date.now() / 200;
       const blink = Math.sin(time) > 0.95; // Clignement aléatoire
       
+      const pulse = (Math.sin(time * 1.3) + 1) / 2; // 0..1
       if (glow) {
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 12 + pulse * 10;
         ctx.shadowColor = color;
       }
-      ctx.fillStyle = color;
+      const bodyGrad = ctx.createLinearGradient(x, y, x, y + h);
+      bodyGrad.addColorStop(0, "#ffffff");
+      bodyGrad.addColorStop(0.25, color);
+      bodyGrad.addColorStop(1, "#2a0a12");
+      ctx.fillStyle = bodyGrad;
       ctx.beginPath();
       // Forme d'ennemi alien
       ctx.moveTo(x + w / 2, y);
@@ -674,7 +749,7 @@
         }
         star.brightness += (Math.random() - 0.5) * 0.1;
         star.brightness = Math.max(0.3, Math.min(1, star.brightness));
-        ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
+        ctx.fillStyle = `rgba(${star.hue || "255, 255, 255"}, ${star.brightness})`;
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
         ctx.fill();
@@ -712,6 +787,40 @@
       });
     }
 
+    function drawRings() {
+      rings.forEach((r, index) => {
+        r.radius += (r.maxRadius - r.radius) * 0.25;
+        r.life -= 0.06;
+        if (r.life <= 0) {
+          rings.splice(index, 1);
+        } else {
+          ctx.globalAlpha = r.life * 0.6;
+          ctx.strokeStyle = r.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      });
+    }
+
+    function drawNebulae() {
+      nebulae.forEach(n => {
+        n.x += n.driftX;
+        n.y += n.driftY;
+        if (n.x < -n.r) n.x = canvas.width + n.r;
+        if (n.x > canvas.width + n.r) n.x = -n.r;
+        if (n.y < -n.r) n.y = canvas.height + n.r;
+        if (n.y > canvas.height + n.r) n.y = -n.r;
+        const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+        grad.addColorStop(0, `rgba(${n.color}, 0.16)`);
+        grad.addColorStop(1, `rgba(${n.color}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      });
+    }
+
     function update() {
       if (gameOver) return;
 
@@ -725,6 +834,22 @@
       player.vx *= 0.92; // Friction
       player.x += player.vx;
       player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+
+      // Petites particules de réacteur en continu
+      if (Math.random() < 0.6) {
+        particles.push({
+          x: player.x + player.w * 0.2 + Math.random() * player.w * 0.6,
+          y: player.y + player.h,
+          vx: (Math.random() - 0.5) * scale,
+          vy: (1.5 + Math.random() * 1.5) * scale,
+          life: 0.6,
+          color: Math.random() < 0.5 ? "#ff8800" : "#ffcc00",
+          size: (Math.random() * 1.5 + 1) * scale,
+          gravity: 0
+        });
+      }
+
+      if (shakeTime > 0) shakeTime -= 1;
 
       if (keys.shoot && bullets.length < 6) {
         const scale = canvas.width / 640;
@@ -774,6 +899,9 @@
           player.y + player.h > enemy.y
         ) {
           createParticle(player.x + player.w / 2, player.y + player.h / 2, "#00d4ff");
+          createParticle(player.x + player.w / 2, player.y + player.h / 2, "#ff5050");
+          shakeTime = 18;
+          shakeMag = 8 * scale;
           gameOver = true;
           etatEl.textContent = "Game Over ! Clique sur Respawn pour recommencer.";
           respawnBtn.classList.remove("hidden");
@@ -787,6 +915,13 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      ctx.save();
+      if (shakeTime > 0) {
+        const dx = (Math.random() - 0.5) * shakeMag;
+        const dy = (Math.random() - 0.5) * shakeMag;
+        ctx.translate(dx, dy);
+      }
+
       // Background avec gradient
       const gradient = ctx.createRadialGradient(
         canvas.width / 2, canvas.height / 2, 0,
@@ -797,14 +932,21 @@
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Nébuleuses en fond pour la profondeur
+      drawNebulae();
+
       // Dessiner les étoiles
       drawStars();
+
+      // Dessiner les ondes de choc
+      drawRings();
 
       // Dessiner les particules
       drawParticles();
 
-      // Dessiner le vaisseau avec forme détaillée
-      drawSpaceship(player.x, player.y, player.w, player.h, "#00d4ff", true);
+      // Dessiner le vaisseau avec forme détaillée (légère inclinaison selon le mouvement)
+      const shipTilt = Math.max(-0.35, Math.min(0.35, -player.vx * 0.05));
+      drawSpaceship(player.x, player.y, player.w, player.h, "#00d4ff", true, shipTilt);
 
       // Dessiner les balles avec traînées
       bullets.forEach((bullet) => {
@@ -812,13 +954,25 @@
         bullet.trail.forEach((pos, i) => {
           const alpha = i / bullet.trail.length * 0.5;
           ctx.globalAlpha = alpha;
-          ctx.fillStyle = "#ffd700";
+          const grad = ctx.createLinearGradient(pos.x, pos.y, pos.x, pos.y + bullet.h);
+          grad.addColorStop(0, "#fff6c8");
+          grad.addColorStop(1, "#ffd700");
+          ctx.fillStyle = grad;
           ctx.beginPath();
           ctx.arc(pos.x + bullet.w / 2, pos.y + bullet.h / 2, bullet.w / 2 * (i / bullet.trail.length), 0, Math.PI * 2);
           ctx.fill();
         });
         ctx.globalAlpha = 1;
-        drawRect(bullet, "#ffd700", true);
+        // Coeur du tir en dégradé pour un effet laser
+        ctx.shadowBlur = 16;
+        ctx.shadowColor = "#ffd700";
+        const bulletGrad = ctx.createLinearGradient(bullet.x, bullet.y, bullet.x, bullet.y + bullet.h);
+        bulletGrad.addColorStop(0, "#ffffff");
+        bulletGrad.addColorStop(0.5, "#ffe066");
+        bulletGrad.addColorStop(1, "#ff9d00");
+        ctx.fillStyle = bulletGrad;
+        ctx.fillRect(bullet.x, bullet.y, bullet.w, bullet.h);
+        ctx.shadowBlur = 0;
       });
 
       // Dessiner les ennemis avec formes détaillées
@@ -828,6 +982,18 @@
         const scale = canvas.width / 640;
         drawText("GAME OVER", canvas.width / 2 - 110 * scale, canvas.height / 2 - 10 * scale, "42px", true);
       }
+
+      ctx.restore();
+
+      // Léger vignettage pour la profondeur (non affecté par la secousse)
+      const vignette = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, canvas.height * 0.35,
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.75
+      );
+      vignette.addColorStop(0, "rgba(0,0,0,0)");
+      vignette.addColorStop(1, "rgba(0,0,0,0.35)");
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     function loop() {
