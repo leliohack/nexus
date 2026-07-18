@@ -135,7 +135,12 @@
       border-radius: 50%;
       background: rgba(88, 101, 242, 0.8);
       position: absolute;
-      transition: none;
+      transition: transform 0.1s ease, background 0.1s ease;
+    }
+
+    .joystick-stick:active {
+      background: rgba(88, 101, 242, 1) !important;
+      transform: scale(1.1) !important;
     }
     @media (max-width: 600px) {
       .wrapper { width: 100%; max-width: 100vw; padding: 16px; border-radius: 0; }
@@ -143,7 +148,7 @@
       .info { font-size: 14px; gap: 12px; }
       #respawn { width: 100%; }
       .mobile-controls { gap: 50px; justify-content: space-between; padding: 0 20px; }
-      .mobile-controls button { min-width: 70px; min-height: 45px; font-size: 14px; }
+      .mobile-controls button { min-width: 90px; min-height: 60px; font-size: 16px; }
       .joystick-container { display: flex; }
       .discord-note { font-size: 13px; padding: 12px; }
     }
@@ -375,6 +380,31 @@
     const btnShoot = document.getElementById("btnShoot");
     const bgMusic = document.getElementById("bgMusic");
 
+    // === DETECTION AVANCEE DU DEVICE ===
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isLowEndDevice = isMobile || (navigator.deviceMemory && navigator.deviceMemory <= 2);
+    const performanceMode = isLowEndDevice ? "low" : "high";
+    
+    // Parametres adaptatifs pour mobile/PC
+    const settings = {
+      high: {
+        starCount: [70, 55],       // Etoiles (2 couches)
+        nebulaCount: 3,           // Nebuleuses
+        particleCount: 16,       // Particules par explosion
+        glowEnabled: true,       // Effets de lueur
+        trailLength: 8,          // Longueur des trainees de tirs
+        mobileScaleFactor: 1.0   // Taille normale
+      },
+      low: {
+        starCount: [30, 20],      // Moins d'etoiles sur mobile
+        nebulaCount: 1,          // 1 nebuleuse seulement
+        particleCount: 8,        // Moins de particules
+        glowEnabled: false,      // Desactive les glow (trop lourds)
+        trailLength: 4,          // Trainees plus courtes
+        mobileScaleFactor: 1.5   // 50% plus grand sur mobile
+      }
+    };
+
     let player;
     let bullets;
     let enemies;
@@ -388,11 +418,11 @@
     let gameOver;
     let keys;
     let animationId;
-    let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     let joystickActive = false;
     let joystickCenterX = 0;
     let joystickCenterY = 0;
     let musicStarted = false;
+    let lastFrameTime = 0;
 
     function startMusic() {
       if (!musicStarted) {
@@ -404,11 +434,14 @@
 
     function resetGame() {
       const scale = canvas.width / 640;
+      const config = settings[performanceMode];
+      const mobileScaleFactor = config.mobileScaleFactor;
+      
       player = {
-        x: canvas.width / 2 - 20 * scale,
-        y: canvas.height - 60 * scale,
-        w: 40 * scale,
-        h: 16 * scale,
+        x: canvas.width / 2 - 20 * scale * mobileScaleFactor,
+        y: canvas.height - 60 * scale * mobileScaleFactor,
+        w: 40 * scale * mobileScaleFactor,
+        h: 16 * scale * mobileScaleFactor,
         speed: 6 * scale,
         vx: 0,
         ax: 0
@@ -419,7 +452,7 @@
       rings = [];
       stars = [];
       // Deux couches d'étoiles pour un effet de profondeur (parallax)
-      for (let i = 0; i < 70; i++) {
+      for (let i = 0; i < config.starCount[0]; i++) {
         stars.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
@@ -429,7 +462,7 @@
           hue: Math.random() < 0.25 ? "180, 220, 255" : "255, 255, 255"
         });
       }
-      for (let i = 0; i < 55; i++) {
+      for (let i = 0; i < config.starCount[1]; i++) {
         stars.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
@@ -441,7 +474,7 @@
       }
       nebulae = [];
       const nebulaColors = ["88, 60, 200", "20, 120, 200", "180, 40, 160"];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < config.nebulaCount; i++) {
         nebulae.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
@@ -465,7 +498,8 @@
 
     function createEnemy() {
       const scale = canvas.width / 640;
-      const size = 28 * scale;
+      const config = settings[performanceMode];
+      const size = 28 * scale * config.mobileScaleFactor;
       enemies.push({
         x: Math.random() * (canvas.width - size),
         y: -size,
@@ -478,7 +512,8 @@
 
     function createParticle(x, y, color) {
       const scale = canvas.width / 640;
-      const count = 16;
+      const config = settings[performanceMode];
+      const count = config.particleCount;
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.3;
         const speed = Math.random() * 7 * scale + 1.5 * scale;
@@ -494,7 +529,8 @@
         });
       }
       // Quelques étincelles blanches plus rapides pour le contraste
-      for (let i = 0; i < 6; i++) {
+      const sparkCount = isMobile ? 3 : 6;
+      for (let i = 0; i < sparkCount; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = Math.random() * 9 * scale + 4 * scale;
         particles.push({
@@ -542,7 +578,8 @@
       ctx.rotate(tilt);
       ctx.translate(-(x + w / 2), -(y + h / 2));
 
-      if (glow) {
+      const config = settings[performanceMode];
+      if (glow && config.glowEnabled) {
         ctx.shadowBlur = 25;
         ctx.shadowColor = color;
       }
@@ -687,7 +724,8 @@
       const blink = Math.sin(time) > 0.95; // Clignement aléatoire
       
       const pulse = (Math.sin(time * 1.3) + 1) / 2; // 0..1
-      if (glow) {
+      const config = settings[performanceMode];
+      if (glow && config.glowEnabled) {
         ctx.shadowBlur = 12 + pulse * 10;
         ctx.shadowColor = color;
       }
@@ -866,7 +904,8 @@
 
       bullets.forEach((bullet, index) => {
         bullet.trail.push({ x: bullet.x, y: bullet.y });
-        if (bullet.trail.length > 8) bullet.trail.shift();
+        const config = settings[performanceMode];
+        if (bullet.trail.length > config.trailLength) bullet.trail.shift();
         bullet.y -= bullet.speed;
         if (bullet.y + bullet.h < 0) bullets.splice(index, 1);
       });
@@ -996,7 +1035,13 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    function loop() {
+    function loop(timestamp) {
+      // Throttling pour limiter a 60 FPS max (evite la surcharge sur mobile)
+      if (timestamp - lastFrameTime < 16) {
+        requestAnimationFrame(loop);
+        return;
+      }
+      lastFrameTime = timestamp;
       update();
       draw();
       if (!gameOver) animationId = requestAnimationFrame(loop);
